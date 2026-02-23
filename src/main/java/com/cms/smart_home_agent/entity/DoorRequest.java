@@ -1,4 +1,13 @@
 package com.cms.smart_home_agent.entity;
 
-public class DoorRequest {
+import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import lombok.Data;
+
+@Data
+public class DoorRequest{
+    @JsonPropertyDescription("门所在的位置，如客厅、卧室等，如果用户没有明确指定位置，请保持此字段为空，系统将默认操作客厅的门。")
+    private String location; // 位置，例如：客厅、卧室等
+    @JsonPropertyDescription("门的动作，例如：开门、关门等，请根据用户的指令准确填写，不要随意猜测。")
+    private String action;   // 动作，例如：开门、关门等 {
+
 }
