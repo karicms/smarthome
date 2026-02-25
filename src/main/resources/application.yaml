@@ -1,11 +1,5 @@
 spring:
+  profiles:
+    active: dev
   application:
     name: smart-home-agent
-  ai:
-   openai:
-     api-key: sk-56e9cef102bb4951b541e08b608196d7
-     base-url : https://dashscope.aliyuncs.com/compatible-mode
-     chat:
-       options:
-         model: deepseek-v3.2
-         temperature: 0.5

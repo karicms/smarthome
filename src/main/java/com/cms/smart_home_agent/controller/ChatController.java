@@ -31,7 +31,7 @@ public class ChatController {
         this.chatClient = chatClientBuilder
                 .defaultSystem(SYSTEM_PROMPT)
                 // 默认函数：AI 会根据提示词自动决定调用哪个
-                .defaultFunctions("airConditioningControl", "doorControl", "lightControl")
+                .defaultFunctions("airConditioningControl", "doorControl", "lightControl","outdoorWeatherFunction")
                 .build();
     }
 
