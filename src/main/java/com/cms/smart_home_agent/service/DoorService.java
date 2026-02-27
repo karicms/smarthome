@@ -13,9 +13,12 @@ public class DoorService implements Function<DoorRequest, String> {
     public String apply(DoorRequest doorRequest) {
         // 这里可以根据doorRequest中的location和action来执行相应的操作
         // 例如：
+        //后续通过用户id去查询对应的设备id，从而发送对这个设备的控制指令
+        String userId = doorRequest.getUserId();
         String location = doorRequest.getLocation();
         String action = doorRequest.getAction();
         log.info(">>>>>> [硬件指令执行中] <<<<<<");
+        log.info("目标用户：{}", userId);
         log.info("目标房间: {}", location.isEmpty() ? "客厅" : location);
         log.info("门的动作: {}", action);
         log.info(">>>>>> [指令发送成功] <<<<<<");

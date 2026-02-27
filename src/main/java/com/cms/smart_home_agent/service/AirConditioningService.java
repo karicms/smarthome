@@ -12,8 +12,9 @@ public class AirConditioningService implements Function<AiConditioningRequest, S
 
     @Override
     public String apply(AiConditioningRequest request) {
+        String userId = request.getUserId();
         String location = (request.getLocation() == null) ? "客厅" : request.getLocation();//处理默认位置
-
+       //后续通过用户id去查询对应的设备id，从而发送对这个设备的控制指令
         Integer targetTemp = request.getTemperature();
         String modeMessage = "";
 
@@ -26,6 +27,7 @@ public class AirConditioningService implements Function<AiConditioningRequest, S
         }
         // 1. 核心逻辑：目前先打印到控制台，模拟控制过程
         log.info(">>>>>> [硬件指令执行中] <<<<<<");
+        log.info("目标用户：{}", userId);
         log.info("目标房间: {}", location);
         log.info("设定温度: {} ℃", targetTemp);
         log.info(">>>>>> [指令发送成功] <<<<<<");

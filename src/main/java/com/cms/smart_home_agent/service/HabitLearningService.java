@@ -1,5 +1,6 @@
 package com.cms.smart_home_agent.service;
 
+import org.apache.commons.math3.stat.regression.OLSMultipleLinearRegression;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -7,33 +8,47 @@ import java.util.List;
 @Service
 public class HabitLearningService {
 
-    // 线性回归：Y = w1*Outdoor + w2*Indoor + b
-    // 为了毕设好展示，我们用两个特征：室外温和室内温
-    public double predict(List<Double> outdoors, List<Double> indoors, List<Double> targets,
-                          double currentOut, double currentIn) {
+    /**
+     * @param outdoorHistory 历史室外温度列表
+     * @param indoorHistory  历史室内温度列表
+     * @param targetHistory  历史用户设定的目标温度列表
+     * @param currentOut     当前实时室外温
+     * @param currentIn      当前实时室内温
+     * @return AI 预测的建议温度
+     */
+    public double calculateRecommendedTemp(List<Double> outdoorHistory,
+                                           List<Double> indoorHistory,
+                                           List<Double> targetHistory,
+                                           double currentOut,
+                                           double currentIn) {
 
-        // 如果数据太少（比如少于3条），直接返回默认舒适温度26，避免计算报错
-        if (outdoors.size() < 3) return 26.0;
-
-        // 演示用：简单的多元线性回归（基于最小二乘法原理）
-        // 这里推荐引入 Apache Commons Math 库，代码会非常整洁
-        OLSMultipleLinearRegression regression = new OLSMultipleLinearRegression();
-
-        // 转换数据格式为矩阵
-        double[] y = targets.stream().mapToDouble(Double::doubleValue).toArray();
-        double[][] x = new double[outdoors.size()][2];
-        for (int i = 0; i < outdoors.size(); i++) {
-            x[i][0] = outdoors.get(i);
-            x[i][1] = indoors.get(i);
+        // 健壮性检查：线性回归至少需要比变量数更多的数据点
+        if (outdoorHistory.size() < 5) {
+            return 26.0; // 数据不足时返回安全默认值
         }
 
+        OLSMultipleLinearRegression regression = new OLSMultipleLinearRegression();
+
+        // 1. 整理标签 Y (用户设定的温度)
+        double[] y = targetHistory.stream().mapToDouble(Double::doubleValue).toArray();
+
+        // 2. 整理特征 X (室外温, 室内温)
+        double[][] x = new double[outdoorHistory.size()][2];
+        for (int i = 0; i < outdoorHistory.size(); i++) {
+            x[i][0] = outdoorHistory.get(i);
+            x[i][1] = indoorHistory.get(i);
+        }
+
+        // 3. 拟合模型
         regression.newSampleData(y, x);
-        double[] beta = regression.estimateRegressionParameters(); // 得到 [b, w1, w2]
 
-        // 预测结果 = b + w1*currentOut + w2*currentIn
-        double result = beta[0] + beta[1] * currentOut + beta[2] * currentIn;
+        // 4. 获取回归系数 [b (截距), w1 (室外权重), w2 (室内权重)]
+        double[] beta = regression.estimateRegressionParameters();
 
-        // 限制在合理范围内（16-30度）
-        return Math.max(16, Math.min(30, result));
+        // 5. 预测：Target = b + w1 * CurrentOut + w2 * CurrentIn
+        double prediction = beta[0] + beta[1] * currentOut + beta[2] * currentIn;
+
+        // 6. 结果约束（防止模型跑飞，限制在空调正常范围内）
+        return Math.round(Math.max(16, Math.min(30, prediction)) * 10.0) / 10.0;
     }
 }

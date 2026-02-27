@@ -16,10 +16,12 @@ public class LightService implements Function<LightRequest, String> {
 
             String location = lightRequest.getLocation();
             String action = lightRequest.getAction();
-
+            String userId = lightRequest.getUserId();
+        //后续通过用户id去查询对应的设备id，从而发送对这个设备的控制指令
             log.info("lightRequest:{}", lightRequest);
             log.info("location:{}", location);
             log.info("action:{}", action);
+            log.info("userId:{}", userId);
             // 这里可以根据doorRequest中的location和action来执行相应的操作
             // 例如：
             // 根据location和action执行开灯或关灯的操作
