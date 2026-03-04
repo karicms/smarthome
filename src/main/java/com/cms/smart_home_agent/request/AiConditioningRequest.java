@@ -1,7 +1,5 @@
-package com.cms.smart_home_agent.entity;
+package com.cms.smart_home_agent.request;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import lombok.Data;
 

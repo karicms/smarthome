@@ -1,6 +1,6 @@
 package com.cms.smart_home_agent.service;
 
-import com.cms.smart_home_agent.entity.WeatherRequest;
+import com.cms.smart_home_agent.request.WeatherRequest;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
@@ -9,8 +9,6 @@ import org.springframework.web.client.RestTemplate;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.Map;
 import java.util.function.Function;
 import java.util.zip.GZIPInputStream;
 

@@ -1,16 +1,17 @@
 package com.cms.smart_home_agent.service;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
-
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cms.smart_home_agent.entity.Family;
-import com.cms.smart_home_agent.entity.User;
+import com.cms.smart_home_agent.entity.FamilyMember;
 import com.cms.smart_home_agent.mapper.FamilyMapper;
-import com.cms.smart_home_agent.mapper.UserMapper;
+import com.cms.smart_home_agent.mapper.FamilyMemberMapper;
+import com.cms.smart_home_agent.request.createfamilyrequest;
+import com.cms.smart_home_agent.vo.FamilyVo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -20,157 +21,129 @@ public class FamilyService {
     private FamilyMapper familyMapper;
 
     @Autowired
-    private UserMapper userMapper;
+    private FamilyMemberMapper familyMemberMapper;
 
     /** 辅助方法：生成唯一的家庭码 */
-    private String generateFamilyCode() {
-        return UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+    private String generateUniqueFamilyCode() {
+        String code;
+        boolean exists;
+        int retryCount = 0;
+
+        do {
+            // 1. 生成 8 位随机码 (建议去掉容易混淆的字符，如 O, 0, I, 1)
+            code = UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+
+            // 2. 检查数据库中是否存在
+            exists = familyMapper.selectCount(new LambdaQueryWrapper<Family>()
+                    .eq(Family::getFamilyCode, code)) > 0;
+
+            retryCount++;
+            // 理论上 8 位码有 2.8 亿种组合，碰撞概率极低，通常循环 1 次就过了
+            if (retryCount > 10) {
+                throw new RuntimeException("生成唯一家庭码失败，系统繁忙。");
+            }
+        } while (exists);
+
+        return code;
     }
-
-    /** 辅助方法：获取用户 */
-    private User getUserById(Integer userId) {
-        User user = userMapper.selectById(userId);
-        if (user == null) {
-            throw new RuntimeException("用户不存在。");
-        }
-        return user;
-    }
-
-    // --- C: 创建家庭 ---
-    @Transactional
-    public Family createFamily(String familyName, Integer currentUserId) {
-        User user = getUserById(currentUserId);
-
-        // 1. 业务校验：检查用户是否已在其他家庭
-        if (user.getFamilyId() != null) {
-            throw new RuntimeException("您已属于一个家庭，无法创建新家庭。请先退出。");
-        }
-
-        // 2. 创建 Family 记录
+    // --- C: 创建家庭
+    @Transactional(rollbackFor = Exception.class)
+    public Family createFamily(createfamilyrequest request, String remark)
+    {
         Family family = new Family();
-        family.setFamilyName(familyName);
-        family.setFamilyCode(generateFamilyCode());
+        family.setFamilyName(request.getFamilyName());
+        family.setFamilyCode(generateUniqueFamilyCode());
+        family.setCity(request.getCity());
+        family.setProvince(request.getProvince());
+        family.setAdcode(request.getAdcode());
         familyMapper.insert(family);
 
-        // 3. 将创建者加入家庭 (更新用户 familyId 字段)
-        User updateUser = new User();
-        updateUser.setId(currentUserId);
-        // family.getId() 现在返回 Integer
-        updateUser.setFamilyId(family.getId());
-        userMapper.updateById(updateUser);
+        FamilyMember member = new FamilyMember();
+        member.setFamilyId(family.getId());
+        Integer currentUserId = request.getUserid();
+        member.setUserId(currentUserId);
+        member.setRemark(remark);
+        familyMemberMapper.insert(member);
 
         return family;
     }
 
-    // --- R: 查询家庭 ---
-    public Family getMyFamily(Integer currentUserId) {
-        User user = getUserById(currentUserId);
 
-        if (user.getFamilyId() == null) {
-            return null; // 用户未加入任何家庭
-        }
 
-        // user.getFamilyId() 现在返回 Integer
-        return familyMapper.selectById(user.getFamilyId());
+    //查看用户关联的所有家庭
+    public List<FamilyVo> getMyFamilies(Integer userId) {
+        return familyMapper.selectUserFamilies(userId);
     }
 
-    // --- U: 修改家庭名称 ---
-    // familyId 现为 Integer
-    public boolean updateFamilyName(Integer familyId, String newName, Integer currentUserId) {
-        User user = getUserById(currentUserId);
-
-        // 1. 权限校验：只检查用户是否属于该家庭
-        if (user.getFamilyId() == null || !user.getFamilyId().equals(familyId)) {
-            throw new RuntimeException("权限不足，您不是该家庭的成员。");
-        }
-
-        // 2. 更新家庭信息
+    //修改家庭名称
+    public boolean updateFamilyName(Integer familyId,String newName)
+    {
         Family family = new Family();
-        family.setId(familyId); // familyId 现为 Integer
+        family.setId(familyId);
         family.setFamilyName(newName);
-
         return familyMapper.updateById(family) > 0;
+
     }
 
-    // --- D: 删除家庭 ---
-    // familyId 现为 Integer
-    @Transactional
-    public boolean deleteFamily(Integer familyId, Integer currentUserId) {
-        User user = getUserById(currentUserId);
+    @Transactional(rollbackFor = Exception.class)
+    public boolean deleteFamily(Integer familyId)
+    {
+        familyMemberMapper.delete(new LambdaQueryWrapper<FamilyMember>()
+                .eq(FamilyMember::getFamilyId, familyId));
+// 2. 后续这里可以添加删除设备、删除日志的逻辑
+        // deviceMapper.delete(new LambdaQueryWrapper<Device>().eq(Device::getFamilyId, familyId));
+        // habitDataLogMapper.delete(new LambdaQueryWrapper<HabitDataLog>().eq(HabitDataLog::getFamilyId, familyId));
 
-        // 1. 权限校验：只检查用户是否属于该家庭
-        if (user.getFamilyId() == null || !user.getFamilyId().equals(familyId)) {
-            throw new RuntimeException("权限不足，您不是该家庭的成员。");
-        }
-
-        Family family = familyMapper.selectById(familyId); // familyId 现为 Integer
-        if (family == null) {
-            return true;
-        }
-
-        // 2. 解除所有成员的关联 (将 User 表中该 familyId 的用户设为 familyId = null)
-        UpdateWrapper<User> userUpdateWrapper = new UpdateWrapper<>();
-        userUpdateWrapper.eq("family_id", familyId) // familyId 现为 Integer
-                .set("family_id", null);
-        userMapper.update(null, userUpdateWrapper);
-
-        // 3. 删除 Family 记录
-        return familyMapper.deleteById(familyId) > 0; // familyId 现为 Integer
+        // 3. 删除家庭记录 (这里 familyId 是主键，可以用 deleteById)
+        // SQL: DELETE FROM family WHERE id = ?
+        //3. 删除家庭记录
+        return familyMapper.deleteById(familyId) > 0;
     }
 
     // --- 额外功能：通过码加入家庭 ---
-    @Transactional
-    public Family joinFamilyByCode(String familyCode, Integer currentUserId) {
-        User user = getUserById(currentUserId);
-
-        // 1. 检查是否已在其他家庭
-        if (user.getFamilyId() != null) {
-            throw new RuntimeException("您已属于一个家庭，加入新家庭前请先退出。");
-        }
-
-        // 2. 查找家庭
-        QueryWrapper<Family> familyWrapper = new QueryWrapper<>();
-        familyWrapper.eq("family_code", familyCode);
-        Family family = familyMapper.selectOne(familyWrapper);
-
-        if (family == null) {
+    @Transactional(rollbackFor = Exception.class)
+    public Family joinFamilyByCode(Integer userId, String familyCode, String remark) {
+        Family family = familyMapper.selectOne(new LambdaQueryWrapper<Family>().eq(Family::getFamilyCode, familyCode));
+        if(family == null){
             throw new RuntimeException("家庭码无效或家庭不存在。");
         }
 
-        // 3. 加入家庭 (更新用户 familyId)
-        User updateUser = new User();
-        updateUser.setId(currentUserId);
-        updateUser.setFamilyId(family.getId()); // family.getId() 现在返回 Integer
-        userMapper.updateById(updateUser);
+        //检查是否已经在家里
+        Long count = familyMemberMapper.selectCount(new LambdaQueryWrapper<FamilyMember>()
+                .eq(FamilyMember::getUserId, userId)
+                .eq(FamilyMember::getFamilyId, family.getId()));
+        if (count > 0) {
+            throw new RuntimeException("您已经是该家庭成员。");
+        }
+
+        //建立关联
+        FamilyMember member = new FamilyMember();
+        member.setFamilyId(family.getId());
+        member.setUserId(userId);
+        member.setRemark(remark);
+        familyMemberMapper.insert(member);
 
         return family;
     }
 
     // --- 额外功能：退出家庭 ---
-    // 成员可以直接退出家庭
-    @Transactional
-    public boolean leaveFamily(Integer currentUserId) {
-        User user = getUserById(currentUserId);
-
-        if (user.getFamilyId() == null) {
-            return true; // 已经不在家庭中
-        }
-
-        // 【核心修复】使用 UpdateWrapper 显式设置 family_id = null。
-        // 这样可以确保生成的 SQL 语句包含 SET 子句：
-        // UPDATE user SET family_id = NULL WHERE id = ?
-        UpdateWrapper<User> userUpdateWrapper = new UpdateWrapper<>();
-        userUpdateWrapper.eq("id", currentUserId)
-                .set("family_id", null);
-
-        // 第一个参数传 null，只依赖 Wrapper 进行更新
-        int rows = userMapper.update(null, userUpdateWrapper);
-
-        if (rows != 1) {
-            // 确保更新成功，否则抛出异常回滚事务
-            throw new RuntimeException("退出家庭操作失败，用户记录未更新。");
-        }
-
-        return true;
+    public boolean leaveFamily(Integer userId, Integer familyId) {
+        return familyMemberMapper.delete(new LambdaQueryWrapper<FamilyMember>()
+                .eq(FamilyMember::getUserId, userId)
+                .eq(FamilyMember::getFamilyId, familyId)) > 0;
     }
+
+    public boolean updatefamilyremark(Integer userid,Integer familyId, String remark)
+    {
+        FamilyMember member = familyMemberMapper.selectOne(new LambdaQueryWrapper<FamilyMember>()
+                .eq(FamilyMember::getUserId, userid)
+                .eq(FamilyMember::getFamilyId, familyId));
+        if(member == null){
+            return false;
+        }
+        member.setRemark(remark);
+        return familyMemberMapper.updateById(member) > 0;
+    }
+
+
 }

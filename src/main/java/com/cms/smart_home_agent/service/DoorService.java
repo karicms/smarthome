@@ -1,6 +1,6 @@
 package com.cms.smart_home_agent.service;
 
-import com.cms.smart_home_agent.entity.DoorRequest;
+import com.cms.smart_home_agent.request.DoorRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 

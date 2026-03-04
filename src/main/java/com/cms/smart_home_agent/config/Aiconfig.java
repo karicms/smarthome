@@ -1,6 +1,9 @@
 package com.cms.smart_home_agent.config;
 
-import com.cms.smart_home_agent.entity.*;
+import com.cms.smart_home_agent.request.AiConditioningRequest;
+import com.cms.smart_home_agent.request.DoorRequest;
+import com.cms.smart_home_agent.request.LightRequest;
+import com.cms.smart_home_agent.request.WeatherRequest;
 import com.cms.smart_home_agent.service.AirConditioningService;
 import com.cms.smart_home_agent.service.DoorService;
 import com.cms.smart_home_agent.service.LightService;
@@ -10,7 +13,6 @@ import org.springframework.ai.chat.memory.InMemoryChatMemory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Description;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.function.Function;
 

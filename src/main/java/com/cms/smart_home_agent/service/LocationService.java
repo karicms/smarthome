@@ -1,5 +1,6 @@
 package com.cms.smart_home_agent.service;
 
+import com.cms.smart_home_agent.DTO.LocationDTO;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,11 +22,11 @@ public class LocationService {
         this.objectMapper = objectMapper;
     }
 
-    public String getCityByIp(String ip)
+    public LocationDTO getCityByIp(String ip)
     {
         if(ip.equals("127.0.0.1"))
         {
-            return "上海";
+            return new LocationDTO("上海市","上海市","310000");
         }
         try{
             String response = restClient.get()
@@ -37,22 +38,23 @@ public class LocationService {
             // 高德 API 成功状态 status 为 "1"
             if ("1".equals(root.path("status").asText())) {
                 String city = root.path("city").asText();
+                String adcode = root.path("adcode").asText();
+                String province = root.path("province").asText();
 
                 // 有时候 IP 只能定位到省，城市字段可能是空字符串或 "[]"
                 if (city != null && !city.isEmpty() && !city.equals("[]")) {
-                    return city;
+                    return new LocationDTO(province, city, adcode);
                 }
 
                 // 如果没有城市，尝试返回省份
-                String province = root.path("province").asText();
                 if (province != null && !province.isEmpty() && !province.equals("[]")) {
-                    return province;
+                    return new LocationDTO(province, province, adcode);
                 }
             }
         }catch (Exception e){
             log.error(e.getMessage());
         }
-        return "北京";
+        return new LocationDTO("未知","未知","000000");
     }
     /**
      * 获取真实 IP 的核心逻辑

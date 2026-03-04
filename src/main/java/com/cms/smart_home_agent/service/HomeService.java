@@ -1,7 +1,7 @@
 package com.cms.smart_home_agent.service;
 
 
-import com.cms.smart_home_agent.entity.ControlRequest;
+import com.cms.smart_home_agent.request.ControlRequest;
 import com.cms.smart_home_agent.entity.HomestatusResponse;
 import com.cms.smart_home_agent.entity.tempconfig;
 import com.fasterxml.jackson.core.JsonProcessingException;

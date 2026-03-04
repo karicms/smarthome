@@ -1,6 +1,6 @@
 package com.cms.smart_home_agent.service;
 
-import com.cms.smart_home_agent.entity.AiConditioningRequest;
+import com.cms.smart_home_agent.request.AiConditioningRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 

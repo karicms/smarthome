@@ -1,10 +1,10 @@
-package com.cms.smart_home_agent.entity;
+package com.cms.smart_home_agent.request;
 
 import lombok.Data;
 
 @Data
 public class ChatRequest {
-    private String userId;
+    private Integer userId;
     private String message;
 
 }

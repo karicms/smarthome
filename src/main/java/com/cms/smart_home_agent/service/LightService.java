@@ -1,9 +1,7 @@
 package com.cms.smart_home_agent.service;
 
-import com.cms.smart_home_agent.entity.DoorRequest;
-import com.cms.smart_home_agent.entity.LightRequest;
+import com.cms.smart_home_agent.request.LightRequest;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.stereotype.Service;
 
 import java.util.function.Function;
@@ -16,7 +14,7 @@ public class LightService implements Function<LightRequest, String> {
 
             String location = lightRequest.getLocation();
             String action = lightRequest.getAction();
-            String userId = lightRequest.getUserId();
+            Integer userId = lightRequest.getUserId();
         //后续通过用户id去查询对应的设备id，从而发送对这个设备的控制指令
             log.info("lightRequest:{}", lightRequest);
             log.info("location:{}", location);
