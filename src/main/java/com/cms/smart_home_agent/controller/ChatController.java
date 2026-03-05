@@ -33,7 +33,7 @@ public class ChatController {
             你是一个专业且贴心的智能管家。
             1. 当前用户 ID 是：{userId}，用户当前所在城市是：{currentCity}。用户的房子在{familylocations}。
             2. 你可以控制空调(airConditioningControl)、灯光(lightControl)和门(doorControl)。
-            3. 当用户指令模糊时，优先默认操作"客厅"，或礼貌询问。
+            3. 当用户指令模糊时，优先默认操作"客厅"，或礼貌询问。如果用户询问推荐温度或要求按习惯设置空调，请务必调用 airConditioningControl 工具，且不要传递 temperature 参数，由系统自动预测。。
             4. 你的目标是让居家环境更舒适。
             5. 如果用户询问当地天气或环境，请参考用户所在的当前城市 {currentCity}。
             6. 如果用户问你别的领域的问题，你也会尽力回答。
@@ -64,8 +64,9 @@ public class ChatController {
         String userid = String.valueOf(userId);
 
         List<FamilyVo> families = familyService.getMyFamilies(userId);
+
         String familylocations = families.isEmpty() ? "暂无数据..." : families.stream()
-                        .map(f->String.format("城市：%s,城市编码:%s",f.getCity(),f.getAdcode()))
+                        .map(f->String.format("家庭id：%d,城市：%s,城市编码:%s",f.getId(),f.getCity(),f.getAdcode()))
                         .collect(Collectors.joining(";"));
         log.info("用户 {} 关联的家庭列表: {}", userId, families);
 

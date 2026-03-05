@@ -18,6 +18,7 @@ import java.util.List;
 public interface FamilyMapper extends BaseMapper<Family> {
     // 可以在这里定义自定义的家庭相关的数据库操作方法
 
+
         @Select("SELECT f.*, fm.remark FROM family f " +
                 "JOIN family_member fm ON f.id = fm.family_id " +
                 "WHERE fm.user_id = #{userId}")

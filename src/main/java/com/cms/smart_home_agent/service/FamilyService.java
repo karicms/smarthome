@@ -75,6 +75,10 @@ public class FamilyService {
         return familyMapper.selectUserFamilies(userId);
     }
 
+    public List<Integer> getFamilyIdbyuserid(Integer userId) {
+        return familyMemberMapper.selectFamilyIdsByUserId(userId);
+    }
+
     //修改家庭名称
     public boolean updateFamilyName(Integer familyId,String newName)
     {
