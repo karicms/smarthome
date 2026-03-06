@@ -64,11 +64,11 @@ public class Aiconfig {
 //        return (req) -> habitService.predict(req.getUserId(), req.getOutsideTemperature());
 //    }
 
-
-    @Bean
-    public ChatMemory chatMemory()
-    {
-        return new InMemoryChatMemory();//这里使用了一个简单的内存聊天记忆实现，实际应用中可以根据需要选择更复杂的实现，例如数据库存储等。
-    }
+//
+//    @Bean
+//    public ChatMemory chatMemory()
+//    {
+//        return new InMemoryChatMemory();//这里使用了一个简单的内存聊天记忆实现，实际应用中可以根据需要选择更复杂的实现，例如数据库存储等。
+//    }
 
 }

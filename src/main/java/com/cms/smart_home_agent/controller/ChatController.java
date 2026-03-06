@@ -1,18 +1,14 @@
 package com.cms.smart_home_agent.controller;
 
 import com.cms.smart_home_agent.DTO.LocationDTO;
-import com.cms.smart_home_agent.mapper.UserMapper;
 import com.cms.smart_home_agent.request.ChatRequest;
+import com.cms.smart_home_agent.service.ChatService;
 import com.cms.smart_home_agent.service.FamilyService;
 import com.cms.smart_home_agent.service.LocationService;
-import com.cms.smart_home_agent.service.UserService;
 import com.cms.smart_home_agent.vo.FamilyVo;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
-import org.springframework.ai.chat.memory.ChatMemory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,9 +20,9 @@ import java.util.stream.Collectors;
 public class ChatController {
 
     private final ChatClient chatClient;
-    private final ChatMemory chatMemory;
     private final LocationService locationService;
     private final FamilyService familyService;
+    private final ChatService chatService;
 
     // 系统角色描述：增加了动态参数占位符 {currentCity} 和 {userId}
     private static final String SYSTEM_PROMPT = """
@@ -40,9 +36,9 @@ public class ChatController {
             7、用户问你家庭相关问题是优先给出用户所在地的家庭，如果没有的话就问用户是想要操作哪个家庭。
             """;
 
-    public ChatController(ChatClient.Builder chatClientBuilder, ChatMemory chatMemory, LocationService locationService, FamilyService familyService) {
+    public ChatController(ChatClient.Builder chatClientBuilder, LocationService locationService, FamilyService familyService,ChatService chatService) {
        this.familyService = familyService;
-        this.chatMemory = chatMemory;
+       this.chatService = chatService;
         this.locationService = locationService;
 
         // 初始化 ChatClient
@@ -63,6 +59,17 @@ public class ChatController {
         Integer userId = chatRequest.getUserId();
         String userid = String.valueOf(userId);
 
+        List<String> history = chatService.getHistory(userId);
+        String historyText = history.isEmpty() ? "" :
+                "\n--- 最近对话历史 ---\n" +
+                        history.stream().collect(Collectors.collectingAndThen(Collectors.toList(), list -> {
+                            java.util.Collections.reverse(list); // 反转让旧对话在上，新对话在下
+                            return list.stream();
+                        })).collect(Collectors.joining("\n"));
+
+        chatService.addToRedisWindow(userId,"user",userInput);
+        chatService.asyncSaveToDb(userId,"user",userInput);
+
         List<FamilyVo> families = familyService.getMyFamilies(userId);
 
         String familylocations = families.isEmpty() ? "暂无数据..." : families.stream()
@@ -72,21 +79,28 @@ public class ChatController {
 
         log.info("用户ID: {}, IP: {}, 城市: {}, 提问: {}", userId, realIp, currentCity, userInput);
 
+        // 5. 组装 Prompt：历史记忆 + 当前问题
+        String finalInput = historyText + "\n--- 当前指令 ---\n" + userInput;
+
         // 2. 发起 AI 调用
-        return chatClient.prompt()
+        String aiResponse = chatClient.prompt()
                 .system(s -> s.param("currentCity", currentCity)
                         .param("userId", String.valueOf(userId))
-                        .param("familylocations",familylocations)) // 动态注入参数到 SYSTEM_PROMPT
-                .user(userInput)
-                .advisors(new MessageChatMemoryAdvisor(chatMemory,userid,10)) // 记忆顾问，关联用户ID，保留最近10条对话
+                        .param("familylocations", familylocations))
+                .user(finalInput) // 传入包含记忆的文本
                 .call()
-                .content();
+                .content(); // 直接获取文本内容，忽略工具调用细节
+
+        chatService.addToRedisWindow(userId,"ai",aiResponse);
+        chatService.asyncSaveToDb(userId,"ai",aiResponse);
+
+        return aiResponse;
     }
 
 
     @GetMapping("/clear")
-    public String clear(@RequestParam String userId) {
-        this.chatMemory.clear(userId);
+    public String clear(@RequestParam Integer userId) {
+      chatService.clearHistory(userId);
         return "用户 " + userId + " 记忆清除";
     }
 }

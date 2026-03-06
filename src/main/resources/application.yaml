@@ -1,6 +1,11 @@
 spring:
   profiles:
     active: dev
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password:
 
   application:
     name: smart-home-agent
