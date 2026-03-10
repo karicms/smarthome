@@ -57,7 +57,7 @@ public class ChatController {
          String currentCity = location.getCity();
         String userInput = chatRequest.getMessage();
         Integer userId = chatRequest.getUserId();
-        String userid = String.valueOf(userId);
+       // String userid = String.valueOf(userId);
 
         List<String> history = chatService.getHistory(userId);
         String historyText = history.isEmpty() ? "" :
@@ -67,8 +67,7 @@ public class ChatController {
                             return list.stream();
                         })).collect(Collectors.joining("\n"));
 
-        chatService.addToRedisWindow(userId,"user",userInput);
-        chatService.asyncSaveToDb(userId,"user",userInput);
+
 
         List<FamilyVo> families = familyService.getMyFamilies(userId);
 
@@ -90,6 +89,9 @@ public class ChatController {
                 .user(finalInput) // 传入包含记忆的文本
                 .call()
                 .content(); // 直接获取文本内容，忽略工具调用细节
+
+        chatService.addToRedisWindow(userId,"user",userInput);
+        chatService.asyncSaveToDb(userId,"user",userInput);
 
         chatService.addToRedisWindow(userId,"ai",aiResponse);
         chatService.asyncSaveToDb(userId,"ai",aiResponse);

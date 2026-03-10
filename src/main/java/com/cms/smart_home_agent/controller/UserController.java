@@ -99,6 +99,14 @@ public class UserController {
         return Result.success("删除成功");
     }
 
+    @DeleteMapping("/family/leave")
+    public Result deleteFamilyMember(@RequestBody FamilyMemberRequest request) {
+        if (request.getFamilyid() == null || request.getUserid() == null) return Result.fail("家庭ID或用户ID缺失");
+        // 这里需要判断该用户是否有权离开（比如他不是家庭创建者，或者简单处理直接允许离开）
+        familyService.leaveFamily(request.getUserid(), request.getFamilyid());
+        return Result.success("成功离开家庭");
+    }
+
     @PutMapping("/family/updateremark")
     public Result updateFamilyRemark(@RequestBody FamilyMemberRequest request) {
 
