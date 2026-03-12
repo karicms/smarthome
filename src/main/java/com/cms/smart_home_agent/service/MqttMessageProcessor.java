@@ -4,10 +4,14 @@ package com.cms.smart_home_agent.service;
 import com.cms.smart_home_agent.entity.DeviceStatusData;
 import com.cms.smart_home_agent.entity.SensorData;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 // 注意：为了代码能在纯文本中独立显示，我将 SensorData 和 DeviceStatusData 的简化定义放在这里。
@@ -19,6 +23,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * 所有方法都使用了 @Async("mqttTaskExecutor") 来确保在专用的线程池中执行，
  * 从而避免阻塞 MQTT 客户端的 I/O 线程，解决消息处理卡顿和连接丢失问题。
  */
+@Slf4j
 @Component
 public class MqttMessageProcessor {
 
@@ -28,6 +33,8 @@ public class MqttMessageProcessor {
     private final AtomicReference<SensorData> lastSensorData = new AtomicReference<>(new SensorData());
     private final AtomicReference<DeviceStatusData> lastDeviceStatusData = new AtomicReference<>(new DeviceStatusData());
 
+    @Autowired
+    private DirectionalPresenceService directionalPresenceService;
     /**
      * 异步处理温湿度传感器数据 (主题: cms-pub)。
      * 关键: 使用 @Async("mqttTaskExecutor") 绑定到专用线程池。
@@ -66,6 +73,37 @@ public class MqttMessageProcessor {
                     data.isLedStatus(), data.isBuzzerStatus());
         } catch (JsonProcessingException e) {
             System.err.println("解析设备状态数据失败: " + e.getMessage());
+        }
+    }
+
+    public void processIrSensorData(String topic,String payload)
+    {
+        log.info("异步线程 [{}] 处理「{}」红外传感器数据: {}", Thread.currentThread().getName(), topic, payload);
+        try{
+            Map<String,Object> data = objectMapper.readValue(payload,Map.class);
+            String sensorId = (String)data.get("sensorId");
+            Integer familyId = (Integer)data.get("familyId");
+            if(sensorId == null || familyId == null)
+            {
+                log.warn("红外传感器数据缺少必要字段: {}", payload);
+                return;
+            }
+
+            String result = directionalPresenceService.processIrTrigger(sensorId,familyId);
+            // 3. 根据结果执行不同的业务逻辑
+            if ("ENTRY".equals(result)) {
+                log.info("🎉 判定结果：【进入房间】。可以在此触发开灯等逻辑。");
+                // TODO: 之后在这里调用数据库保存方法
+            } else if ("EXIT".equals(result)) {
+                log.info("🚪 判定结果：【离开房间】。可以在此触发关灯等逻辑。");
+                // TODO: 之后在这里调用数据库保存方法
+            } else {
+                log.info("⏳ 判定结果：等待另一侧传感器触发...");
+            }
+        } catch (JsonMappingException e) {
+            throw new RuntimeException(e);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
         }
     }
 

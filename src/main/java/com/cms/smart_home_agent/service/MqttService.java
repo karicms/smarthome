@@ -32,6 +32,7 @@ public class MqttService implements MqttCallback {
     private static final String TOPIC_SENSOR_STATUS = "cms-pub";
     private static final String TOPIC_DEVICE_STATUS_ACK = "cms-device-status";
     private static final String TOPIC_CONFIG="cms-config";
+    private static final String IR_TOPIC = "cms-ir-sensor";
 
     private final IMqttClient client;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -101,6 +102,9 @@ public class MqttService implements MqttCallback {
             messageProcessor.processSensorData(topic, payload);
         } else if (TOPIC_DEVICE_STATUS_ACK.equals(topic)) {
             messageProcessor.processDeviceStatus(topic, payload);
+        }else if (IR_TOPIC.equals(topic)) {
+            messageProcessor.processIrSensorData(topic, payload);
+
         }
     }
 
@@ -119,8 +123,10 @@ public class MqttService implements MqttCallback {
     private void subscribeTopics() throws MqttException {
         client.subscribe(TOPIC_SENSOR_STATUS, 1);
         client.subscribe(TOPIC_DEVICE_STATUS_ACK, 1);
+        client.subscribe(IR_TOPIC, 1);
         System.out.println("已订阅主题: " + TOPIC_SENSOR_STATUS);
         System.out.println("已订阅主题: " + TOPIC_DEVICE_STATUS_ACK);
+        System.out.println("已订阅主题: " + IR_TOPIC);
     }
 
     /**
