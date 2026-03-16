@@ -16,7 +16,7 @@ public class DirectionalPresenceService {
     private StringRedisTemplate stringRedisTemplate;
 
     private static final String IR_WAIT_KEY = "ir_wait:"; // Redis key prefix for waiting IR signals
-    private static final int MATCH_WINDOW= 5;// 定义一个时间窗口（秒），在这个窗口内接收到的 IR 信号才算匹配
+    private static final int MATCH_WINDOW= 60;// 定义一个时间窗口（秒），在这个窗口内接收到的 IR 信号才算匹配
 
     public String processIrTrigger(String sensorId,Integer familyId)
     {
