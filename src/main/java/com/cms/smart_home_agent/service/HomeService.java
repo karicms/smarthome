@@ -5,10 +5,12 @@ import com.cms.smart_home_agent.request.ControlRequest;
 import com.cms.smart_home_agent.entity.HomestatusResponse;
 import com.cms.smart_home_agent.entity.tempconfig;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
+@Slf4j
 public class HomeService {
 
     // 注入 MQTT 服务
@@ -17,6 +19,9 @@ public class HomeService {
 
     @Autowired
     private MqttMessageProcessor mqttMessageProcessor;
+
+    @Autowired
+    private DeviceService deviceService;
 
     /**
      * 【任务 1】获取当前设备状态 (数据来自 MQTT 上报的最新 SensorData 和 DeviceStatusData)
@@ -42,19 +47,44 @@ public class HomeService {
      * @param deviceName 设备名称 ("led" 或 "buzzer")
      * @param request 控制请求 (on/off, true/false)
      */
-    public boolean controlDevice(String deviceName, ControlRequest request) {
+//    public boolean controlDevice(String deviceName, ControlRequest request) {
+//        String action = request.getAction();
+//
+//        // 核心逻辑：通过 MQTT 发布消息到设备控制主题 (例如: led-sub)
+//        try {
+//            mqttService.publishControlCommand(deviceName, action);
+//            // 乐观更新：发送成功即返回 true
+//            return true;
+//
+//        } catch (JsonProcessingException e) {
+//            throw new RuntimeException(e);
+//        }
+//    }
+    public boolean controlDevice(Integer familyId, String deviceName, ControlRequest request) {
         String action = request.getAction();
 
-        // 核心逻辑：通过 MQTT 发布消息到设备控制主题 (例如: led-sub)
-        try {
-            mqttService.publishControlCommand(deviceName, action);
-            // 乐观更新：发送成功即返回 true
-            return true;
+        // 1. 尝试从数据库获取该设备的专属 Topic
+        // 这里的 deviceType 我们假设根据业务逻辑来判断，或者在 Request 里带上
+        // 简单起见，我们先按名称查找，不限类型
+        String targetTopic = deviceService.findTopic(familyId, request.getDeviceType(), deviceName);
 
+        try {
+            if (targetTopic != null) {
+                // 情况 A：找到了精准 Topic，执行精准推送
+                log.info("检测到注册设备 [{}], 正在向主题 [{}] 发送指令", deviceName, targetTopic);
+                mqttService.publishToDevice(targetTopic, deviceName, action);
+            } else {
+                // 情况 B：数据库没找到（可能是旧设备），回退到公共主题 cms-sub
+                log.warn("未找到设备 [{}] 的注册记录，回退到公共频道 cms-sub", deviceName);
+                mqttService.publishControlCommand(deviceName, action);
+            }
+            return true;
         } catch (JsonProcessingException e) {
+            log.error("JSON 序列化失败: {}", e.getMessage());
             throw new RuntimeException(e);
         }
     }
+
 
     public boolean controlconfig(tempconfig temp)
     {

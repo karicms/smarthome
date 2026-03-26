@@ -8,6 +8,8 @@ import lombok.Data;
  */
 @Data
 public class ControlRequest {
+    private Integer familyId;
+    private String deviceType;
     // 设备名称: "led" 或 "buzzer"
     private String devicename;
     // 预期操作: "on" 或 "off"

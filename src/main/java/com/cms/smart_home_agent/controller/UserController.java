@@ -91,12 +91,15 @@ public class UserController {
         return Result.success("更新成功");
     }
 
-    @DeleteMapping("/family")
-    public Result deleteFamily(@RequestBody FamilyMemberRequest request) {
-        if (request.getFamilyid() == null) return Result.fail("家庭ID缺失");
-        // 这里需要判断该用户是否有权删除（比如他是家庭创建者，或者简单处理直接允许删除）
-        familyService.deleteFamily(request.getFamilyid());
-        return Result.success("删除成功");
+    @GetMapping("/family/membercount")
+    public Result getFamilyMemberCount(@RequestParam Integer familyId) {
+        if (familyId == null) return Result.fail("家庭ID缺失");
+        try {
+            int count = familyService.getFamilyMemberCount(familyId);
+            return Result.success(count);
+        } catch (Exception e) {
+            return Result.fail(e.getMessage());
+        }
     }
 
     @DeleteMapping("/family/leave")

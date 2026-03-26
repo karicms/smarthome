@@ -9,7 +9,10 @@ import com.cms.smart_home_agent.vo.FamilyVo;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -99,6 +102,86 @@ public class ChatController {
         return aiResponse;
     }
 
+    @GetMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter chatStream(@RequestParam Integer userId, @RequestParam String message) {
+        SseEmitter emitter = new SseEmitter(30000L); // 30秒超时
+
+        // 异步处理流式响应
+        new Thread(() -> {
+            try {
+                // 1. 获取真实 IP 并解析城市
+                String realIp = "127.0.0.1"; // 简化处理，实际应该从请求中获取
+                LocationDTO location = new LocationDTO();
+                location = locationService.getCityByIp(realIp);
+                String currentCity = location.getCity();
+
+                List<FamilyVo> families = familyService.getMyFamilies(userId);
+                String familylocations = families.isEmpty() ? "暂无数据..." : families.stream()
+                        .map(f->String.format("家庭id：%d,城市：%s,城市编码:%s",f.getId(),f.getCity(),f.getAdcode()))
+                        .collect(Collectors.joining(";"));
+
+                List<String> history = chatService.getHistory(userId);
+                String historyText = history.isEmpty() ? "" :
+                        "\n--- 最近对话历史 ---\n" +
+                                history.stream().collect(Collectors.collectingAndThen(Collectors.toList(), list -> {
+                                    java.util.Collections.reverse(list);
+                                    return list.stream();
+                                })).collect(Collectors.joining("\n"));
+
+                String finalInput = historyText + "\n--- 当前指令 ---\n" + message;
+
+                // 2. 使用流式API - 先获取完整响应，然后模拟流式输出
+                String aiResponse = chatClient.prompt()
+                        .system(s -> s.param("currentCity", currentCity)
+                                .param("userId", String.valueOf(userId))
+                                .param("familylocations", familylocations))
+                        .user(finalInput)
+                        .call()
+                        .content();
+
+                // 3. 模拟流式输出 - 将完整响应按字符逐步发送
+                if (aiResponse != null && !aiResponse.isEmpty()) {
+                    char[] chars = aiResponse.toCharArray();
+                    for (int i = 0; i < chars.length; i++) {
+                        try {
+                            // 发送单个字符
+                            emitter.send(SseEmitter.event().data(String.valueOf(chars[i])));
+
+                            // 模拟打字效果，随机延迟
+                            Thread.sleep(20 + (int)(Math.random() * 30)); // 20-50ms随机延迟
+
+                        } catch (Exception e) {
+                            log.error("发送SSE字符失败", e);
+                            break;
+                        }
+                    }
+                }
+
+                // 4. 发送完成信号
+                emitter.send(SseEmitter.event().data("[DONE]"));
+                emitter.complete();
+
+                // 5. 保存到历史记录
+                chatService.addToRedisWindow(userId,"user",message);
+                chatService.asyncSaveToDb(userId,"user",message);
+
+                chatService.addToRedisWindow(userId,"ai",aiResponse);
+                chatService.asyncSaveToDb(userId,"ai",aiResponse);
+
+            } catch (Exception e) {
+                log.error("流式聊天失败", e);
+                try {
+                    emitter.send(SseEmitter.event().data("抱歉，发生了错误：" + e.getMessage()));
+                    emitter.send(SseEmitter.event().data("[DONE]"));
+                    emitter.complete();
+                } catch (Exception sendError) {
+                    emitter.completeWithError(sendError);
+                }
+            }
+        }).start();
+
+        return emitter;
+    }
 
     @GetMapping("/clear")
     public String clear(@RequestParam Integer userId) {

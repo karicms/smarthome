@@ -149,5 +149,10 @@ public class FamilyService {
         return familyMemberMapper.updateById(member) > 0;
     }
 
+    // 获取家庭成员数量
+    public int getFamilyMemberCount(Integer familyId) {
+        return familyMemberMapper.selectMemberCountByFamilyId(familyId);
+    }
+
 
 }

@@ -16,8 +16,6 @@ import org.springframework.web.bind.annotation.*;
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/home")
-// 启用 CORS，允许小程序（不同源）访问，允许所有方法
-@CrossOrigin(origins = "*", methods = {RequestMethod.GET, RequestMethod.POST})
 public class HomeController {
 
     @Autowired
@@ -43,8 +41,12 @@ public class HomeController {
     public ResponseEntity<?> controlDevice(
             @RequestBody ControlRequest request) {
         String deviceName = request.getDevicename();
-        boolean success = homeService.controlDevice(deviceName, request);
-
+        Integer familyId = request.getFamilyId();
+        boolean success = homeService.controlDevice(familyId,deviceName, request);
+        log.info("收到控制请求: 家庭={}, 设备={}, 动作={}", familyId, deviceName, request.getAction());
+        if(familyId == null){
+            return ResponseEntity.badRequest().body("家庭ID不能为空");
+        }
         if (success) {
             return ResponseEntity.ok().body("Control command sent successfully.");
         } else {

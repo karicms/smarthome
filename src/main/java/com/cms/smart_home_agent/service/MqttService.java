@@ -3,6 +3,7 @@ package com.cms.smart_home_agent.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
 import org.eclipse.paho.client.mqttv3.*;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -21,6 +22,7 @@ import java.util.Map;
  */
 @Service
 @EnableScheduling
+@Slf4j
 public class MqttService implements MqttCallback {
 
     // --- MQTT 配置 ---
@@ -169,6 +171,34 @@ public class MqttService implements MqttCallback {
         } catch (MqttException e) {
             System.err.println("【MQTT ERROR】发送控制指令失败: " + e.getMessage());
             throw new RuntimeException("MQTT 消息发布失败，原因: " + e.getMessage(), e);
+        }
+    }
+
+    public void publishToDevice(String topic, String deviceName, String action) throws JsonProcessingException {
+        if (client == null || !client.isConnected()) {
+            throw new RuntimeException("MQTT 客户端未连接");
+        }
+
+        boolean value = action.equalsIgnoreCase("ON");
+
+        try {
+            // 构建 payload，依然保留 deviceName 是为了让硬件多一层判断，更安全
+            Map<String, Object> payloadMap = new HashMap<>();
+            payloadMap.put("deviceName", deviceName);
+            payloadMap.put("value", value);
+
+            String jsonPayload = objectMapper.writeValueAsString(payloadMap);
+            MqttMessage message = new MqttMessage(jsonPayload.getBytes(StandardCharsets.UTF_8));
+            message.setQos(1);
+
+            // 【关键改动】这里不再用 TOPIC_CMD，而是用参数传进来的 topic
+            client.publish(topic, message);
+
+            log.info(">> [精准推送] 主题: {}, 内容: {}", topic, jsonPayload);
+
+        } catch (MqttException e) {
+            log.error("MQTT 发送失败: {}", e.getMessage());
+            throw new RuntimeException("发送失败", e);
         }
     }
     /**

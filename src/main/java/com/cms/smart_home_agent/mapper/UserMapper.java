@@ -9,11 +9,11 @@ import org.apache.ibatis.annotations.Select;
 @Mapper
 public interface UserMapper extends BaseMapper<User> {
 
-    @Select("SELECT id, user_name AS userName, password, create_time AS createTime " +
+    @Select("SELECT id, user_name AS userName, password " +
             "FROM `user` WHERE user_name = #{userName} AND password = #{password}") // 注意：实际项目中密码应该加密存储，这里为了简单演示直接明文查询
     User findByUsernameAndPassword(@Param("userName") String username, @Param("password") String password);
 
-    @Select("SELECT id, user_name AS userName, password, create_time AS createTime " +
+    @Select("SELECT id, user_name AS userName, password " +
             "FROM `user` WHERE user_name = #{userName}")
     User findByUsername(@Param("userName") String username);
 

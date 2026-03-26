@@ -13,4 +13,12 @@ public interface FamilyMemberMapper extends BaseMapper<FamilyMember> {
         // 直接返回 ID 列表
         @Select("SELECT family_id FROM family_member WHERE user_id = #{userId}")
         List<Integer> selectFamilyIdsByUserId(Integer userId);
+
+        // 获取家庭成员数量
+        @Select("SELECT COUNT(*) FROM family_member WHERE family_id = #{familyId}")
+        int countMembersByFamilyId(Integer familyId);
+
+        // 获取家庭成员数量
+        @Select("SELECT COUNT(*) FROM family_member WHERE family_id = #{familyId}")
+        int selectMemberCountByFamilyId(Integer familyId);
 }
