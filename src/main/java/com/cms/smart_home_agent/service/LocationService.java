@@ -84,4 +84,26 @@ public class LocationService {
         return "0:0:0:0:0:0:0:1".equals(ip) ? "127.0.0.1" : ip;
     }
 
+    public LocationDTO getlocationbycityname(String cityname)
+    {
+        try{
+            String response = restClient.get()
+                    .uri("https://restapi.amap.com/v3/config/district?keywords={city}&subdistrict=0&key={key}",cityname,ampakey)// 构建请求URI，替换参数
+                    .retrieve() // 发送GET请求并获取响应
+                    .body(String.class); // 将响应体转换为字符串
+            log.info(">>> [LocationService] 获取到的位置信息: {}", response);
+            JsonNode root = objectMapper.readTree(response); // 解析JSON响应
+            if ("1".equals(root.path("status").asText())) {
+                JsonNode district = root.path("districts").get(0);
+                String city = district.path("name").asText();
+                String adcode = district.path("adcode").asText();
+                String province = district.path("province").asText();
+                return new LocationDTO(province, city, adcode);
+            }
+        }catch (Exception e){
+            log.error(e.getMessage());
+        }
+        return new LocationDTO("未知","未知","000000");
+    }
+
 }

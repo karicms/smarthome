@@ -6,6 +6,7 @@ import com.cms.smart_home_agent.request.*;
 import com.cms.smart_home_agent.entity.User;
 import com.cms.smart_home_agent.service.FamilyService;
 import com.cms.smart_home_agent.service.UserService;
+import com.cms.smart_home_agent.vo.FamilyMemberVo;
 import com.cms.smart_home_agent.vo.FamilyVo;
 import com.cms.smart_home_agent.vo.Result;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +37,18 @@ public class UserController {
     public Result signup(@RequestBody UserRequest request) {
         return userService.signup(request.getUserName(), request.getPassword())
                 ? Result.success("注册成功") : Result.fail("用户名已存在");
+    }
+ //修改密码
+    @PutMapping("/password")
+    public Result changePassword(@RequestBody ChangePasswordRequest request) {
+        if (request.getUserId() == null || request.getOldPassword() == null || request.getNewPassword() == null) {
+            return Result.fail("参数不完整");
+        }
+        String msg = userService.changePassword(request.getUserId(), request.getOldPassword(), request.getNewPassword());
+        if ("密码修改成功".equals(msg)) {
+            return Result.success(msg);
+        }
+        return Result.fail(msg);
     }
 
     // --- 家庭管理功能 (适配一人多房架构) ---
@@ -102,12 +115,34 @@ public class UserController {
         }
     }
 
+    @GetMapping("/family/members")
+    public Result getFamilyMembers(@RequestParam Integer familyId) {
+        if (familyId == null) return Result.fail("家庭ID缺失");
+        try {
+            List<FamilyMemberVo> members = familyService.getFamilyMembers(familyId);
+            return Result.success(members);
+        } catch (Exception e) {
+            return Result.fail(e.getMessage());
+        }
+    }
+
     @DeleteMapping("/family/leave")
     public Result deleteFamilyMember(@RequestBody FamilyMemberRequest request) {
         if (request.getFamilyid() == null || request.getUserid() == null) return Result.fail("家庭ID或用户ID缺失");
         // 这里需要判断该用户是否有权离开（比如他不是家庭创建者，或者简单处理直接允许离开）
         familyService.leaveFamily(request.getUserid(), request.getFamilyid());
         return Result.success("成功离开家庭");
+    }
+
+    @DeleteMapping("/family")
+    public Result deleteFamily(@RequestBody FamilyMemberRequest request) {
+        if (request.getFamilyid() == null) return Result.fail("家庭ID缺失");
+        try {
+            boolean success = familyService.deleteFamily(request.getFamilyid());
+            return success ? Result.success("家庭已删除") : Result.fail("删除失败");
+        } catch (Exception e) {
+            return Result.fail(e.getMessage());
+        }
     }
 
     @PutMapping("/family/updateremark")
@@ -123,6 +158,22 @@ public class UserController {
         return Result.success("更新成功");
         else
             return Result.fail("更新失败");
+    }
+
+
+    //修改家庭信息（目前仅支持修改家庭名称，后续可以增加其他字段）
+    @PutMapping("/family/update")
+    public Result updateFamily(@RequestBody FamilyupdateRequest request) {
+        if (request.getFamilyId() == null || request.getFamilyName() == null) {
+            return Result.fail("家庭ID或名称缺失");
+        }
+        boolean success = familyService.updateFamily(request);
+        if(success) {
+            return Result.success("更新成功");
+        }
+        else{
+            return Result.fail("更新失败");
+        }
     }
 
 }

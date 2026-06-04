@@ -9,3 +9,13 @@ spring:
 
   application:
     name: smart-home-agent
+
+# 室内人员 / 离家自动化（PIR 静默窗口、红外双束时间窗等）
+presence:
+  ir-max-gap-ms: 10000
+  ir-pending-ttl-seconds: 15
+  pir-quiet-timeout: 8m
+  mm-wave-enabled: false
+  away-turn-off-door: true
+  away-skip-ac: false
+  scan-away-fixed-delay-ms: 30000

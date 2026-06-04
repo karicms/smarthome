@@ -9,9 +9,13 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class CorsConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
+        // 开发时 Vite 端口可能是 5173、5174…；用 pattern 避免换端口就 CORS 失败
         registry.addMapping("/**")
-                .allowedOrigins("http://localhost:5173")  // 明确指定前端地址
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .allowedOriginPatterns(
+                        "http://localhost:*",
+                        "http://127.0.0.1:*"
+                )
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
                 .allowedHeaders("*")
                 .allowCredentials(true)
                 .maxAge(3600);

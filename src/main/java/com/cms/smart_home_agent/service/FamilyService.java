@@ -1,12 +1,17 @@
 package com.cms.smart_home_agent.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.cms.smart_home_agent.DTO.LocationDTO;
 import com.cms.smart_home_agent.entity.Family;
 import com.cms.smart_home_agent.entity.FamilyMember;
 import com.cms.smart_home_agent.mapper.FamilyMapper;
 import com.cms.smart_home_agent.mapper.FamilyMemberMapper;
+import com.cms.smart_home_agent.request.FamilyRequest;
+import com.cms.smart_home_agent.request.FamilyupdateRequest;
 import com.cms.smart_home_agent.request.createfamilyrequest;
+import com.cms.smart_home_agent.vo.FamilyMemberVo;
 import com.cms.smart_home_agent.vo.FamilyVo;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 public class FamilyService {
 
@@ -22,6 +28,9 @@ public class FamilyService {
 
     @Autowired
     private FamilyMemberMapper familyMemberMapper;
+
+    @Autowired
+    private LocationService locationService;
 
     /** 辅助方法：生成唯一的家庭码 */
     private String generateUniqueFamilyCode() {
@@ -55,7 +64,12 @@ public class FamilyService {
         family.setFamilyCode(generateUniqueFamilyCode());
         family.setCity(request.getCity());
         family.setProvince(request.getProvince());
-        family.setAdcode(request.getAdcode());
+        if(request.getAdcode()==null)
+        {
+            LocationDTO location = locationService.getlocationbycityname(request.getCity());
+            family.setAdcode(location.getAdcode());
+        }
+//        family.setAdcode(request.getAdcode());
         familyMapper.insert(family);
 
         FamilyMember member = new FamilyMember();
@@ -154,5 +168,43 @@ public class FamilyService {
         return familyMemberMapper.selectMemberCountByFamilyId(familyId);
     }
 
+    public List<FamilyMemberVo> getFamilyMembers(Integer familyId) {
+        return familyMemberMapper.selectMembersByFamilyId(familyId);
+    }
+
+    public boolean updateFamily(FamilyupdateRequest familyRequest) {
+        // 1. 健壮性检查：必须有 ID 才能更新
+        if (familyRequest.getFamilyId() == null) {
+            log.error("更新失败：家庭 ID 不能为空");
+            return false;
+        }
+
+        Family family = new Family();
+        // 【关键】必须设置 ID，否则 MyBatis-Plus 不知道更新哪一行
+        family.setId(familyRequest.getFamilyId());
+
+        // 只更新非空字段（null 或空字符串都不更新）
+        if (familyRequest.getFamilyName() != null && !familyRequest.getFamilyName().trim().isEmpty()) {
+            family.setFamilyName(familyRequest.getFamilyName());
+        }
+        if (familyRequest.getFamilyprovince() != null && !familyRequest.getFamilyprovince().trim().isEmpty()) {
+            family.setProvince(familyRequest.getFamilyprovince());
+        }
+        if (familyRequest.getFamilyCode() != null && !familyRequest.getFamilyCode().trim().isEmpty()) {
+            family.setAdcode(familyRequest.getFamilyCode());
+        }
+        if (familyRequest.getFamilyCity() != null && !familyRequest.getFamilyCity().trim().isEmpty()) {
+            family.setCity(familyRequest.getFamilyCity());
+        }
+
+        LocationDTO location = locationService.getlocationbycityname(familyRequest.getFamilyCity());
+        String newadcode = location.getAdcode();
+        if (newadcode != null && !newadcode.trim().isEmpty()) {
+            family.setAdcode(newadcode);
+        }
+        // MyBatis-Plus 默认执行：UPDATE family SET name=?... WHERE id=?
+        // 如果字段是 null，SQL 里就不会出现该字段的更新
+        return familyMapper.updateById(family) > 0;
+    }
 
 }

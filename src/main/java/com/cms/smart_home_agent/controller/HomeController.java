@@ -26,8 +26,9 @@ public class HomeController {
      * 用于获取实时温湿度和设备状态
      */
     @GetMapping("/status")
-    public ResponseEntity<HomestatusResponse> getStatus() {
-        HomestatusResponse status = homeService.getstatus();
+    public ResponseEntity<HomestatusResponse> getStatus(
+            @RequestParam(required = false) Integer familyId) {
+        HomestatusResponse status = homeService.getstatus(familyId);
         return ResponseEntity.ok(status);
     }
 
@@ -42,7 +43,8 @@ public class HomeController {
             @RequestBody ControlRequest request) {
         String deviceName = request.getDevicename();
         Integer familyId = request.getFamilyId();
-        boolean success = homeService.controlDevice(familyId,deviceName, request);
+        String devicetype = request.getDeviceType();
+        boolean success = homeService.controlDevice(familyId,deviceName, request,devicetype);
         log.info("收到控制请求: 家庭={}, 设备={}, 动作={}", familyId, deviceName, request.getAction());
         if(familyId == null){
             return ResponseEntity.badRequest().body("家庭ID不能为空");
@@ -65,15 +67,4 @@ public class HomeController {
             return ResponseEntity.badRequest().body("Unknown device: ");
         }
     }
-    /**
-     * 【任务 3 实现】POST /ai-command
-     * 用于接收用户的自然语言指令，并由 AI 决策处理
-     */
-//    @PostMapping("/ai-command")
-//    public ResponseEntity<AiCommandResponse> sendAiCommand(
-//            @RequestBody AiCommandRequest request) {
-//
-//        AiCommandResponse response = homeService.handleAiCommand(request.getCommand());
-//        return ResponseEntity.ok(response);
-//    }
 }

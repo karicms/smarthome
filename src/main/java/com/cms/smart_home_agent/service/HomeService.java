@@ -3,6 +3,7 @@ package com.cms.smart_home_agent.service;
 
 import com.cms.smart_home_agent.request.ControlRequest;
 import com.cms.smart_home_agent.entity.HomestatusResponse;
+import com.cms.smart_home_agent.entity.SensorData;
 import com.cms.smart_home_agent.entity.tempconfig;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.extern.slf4j.Slf4j;
@@ -26,16 +27,20 @@ public class HomeService {
     /**
      * 【任务 1】获取当前设备状态 (数据来自 MQTT 上报的最新 SensorData 和 DeviceStatusData)
      */
-    public HomestatusResponse getstatus()
+    public HomestatusResponse getstatus(Integer familyId)
     {
-        double temp =mqttMessageProcessor.getLastSensorData().getTemperature();
-        double hum=mqttMessageProcessor.getLastSensorData().getHumidity();
+        HomestatusResponse response = new HomestatusResponse();
+        if (familyId != null && deviceService.hasClimateSensor(familyId)) {
+            SensorData sensor = mqttMessageProcessor.getLastSensorData(familyId);
+            response.setHumidity(sensor.getHumidity());
+            response.setTemperature(sensor.getTemperature());
+        } else {
+            response.setHumidity(0);
+            response.setTemperature(0);
+        }
         boolean ledStatus=mqttMessageProcessor.getLastDeviceStatusData().isLedStatus();
         boolean buzzerStatus=mqttMessageProcessor.getLastDeviceStatusData().isBuzzerStatus();
         boolean monitorStatus = mqttMessageProcessor.getLastDeviceStatusData().isMonitorStatus();
-        HomestatusResponse response = new HomestatusResponse();
-        response.setHumidity(hum);
-        response.setTemperature(temp);
         response.setLedStatus(ledStatus);
         response.setBuzzerStatus(buzzerStatus);
         response.setMonitorStatus(monitorStatus);
@@ -60,7 +65,7 @@ public class HomeService {
 //            throw new RuntimeException(e);
 //        }
 //    }
-    public boolean controlDevice(Integer familyId, String deviceName, ControlRequest request) {
+    public boolean controlDevice(Integer familyId, String deviceName, ControlRequest request,String devicetype) {
         String action = request.getAction();
 
         // 1. 尝试从数据库获取该设备的专属 Topic
@@ -76,7 +81,7 @@ public class HomeService {
             } else {
                 // 情况 B：数据库没找到（可能是旧设备），回退到公共主题 cms-sub
                 log.warn("未找到设备 [{}] 的注册记录，回退到公共频道 cms-sub", deviceName);
-                mqttService.publishControlCommand(deviceName, action);
+                mqttService.publishControlCommand(deviceName, action,devicetype);
             }
             return true;
         } catch (JsonProcessingException e) {

@@ -31,4 +31,23 @@ public class UserService {
     public boolean updateUser(User user) {
         return userMapper.updateById(user) == 1; // 只更新一条记录，返回值应该是 1
     }
+
+    public String changePassword(Integer userId, String oldPassword, String newPassword) {
+        if (userId == null) return "用户ID不能为空";
+        if (oldPassword == null || oldPassword.trim().isEmpty()) return "旧密码不能为空";
+        if (newPassword == null || newPassword.trim().isEmpty()) return "新密码不能为空";
+        if (newPassword.length() < 6) return "新密码长度至少6位";
+
+        User user = userMapper.selectById(userId);
+        if (user == null) return "用户不存在";
+        if (user.getPassword() == null || !user.getPassword().equals(oldPassword)) {
+            return "旧密码错误";
+        }
+        if (oldPassword.equals(newPassword)) {
+            return "新密码不能与旧密码相同";
+        }
+
+        user.setPassword(newPassword);
+        return userMapper.updateById(user) == 1 ? "密码修改成功" : "密码修改失败";
+    }
 }

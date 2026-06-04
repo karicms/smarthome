@@ -1,8 +1,11 @@
 package com.cms.smart_home_agent.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.cms.smart_home_agent.entity.Device;
+import com.cms.smart_home_agent.climate.ClimateSensorTopicRegistry;
+import com.cms.smart_home_agent.presence.IrBeamTopicRegistry;
+import com.cms.smart_home_agent.presence.PresenceSensorTopicRegistry;
 import com.cms.smart_home_agent.service.DeviceService;
+import com.cms.smart_home_agent.service.SensorTriggerStateService;
 import com.cms.smart_home_agent.vo.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +20,18 @@ public class DeviceController {
 
     @Autowired
     private DeviceService deviceService;
+
+    @Autowired
+    private SensorTriggerStateService sensorTriggerStateService;
+
+    @Autowired
+    private IrBeamTopicRegistry irBeamTopicRegistry;
+
+    @Autowired
+    private PresenceSensorTopicRegistry presenceSensorTopicRegistry;
+
+    @Autowired
+    private ClimateSensorTopicRegistry climateSensorTopicRegistry;
 
     @PostMapping("/register")
     public Result registerDevice(@RequestBody Device device) {
@@ -41,6 +56,9 @@ public class DeviceController {
         }
 
         log.info("新设备注册：{} - {} @ {}", device.getDeviceName(), device.getDeviceType(), device.getMqttTopic());
+        irBeamTopicRegistry.refresh();
+        presenceSensorTopicRegistry.refresh();
+        climateSensorTopicRegistry.refresh();
         return Result.success(msg);
     }
 
@@ -59,5 +77,25 @@ public class DeviceController {
         int num = deviceService.Devicenum(familyId);
         return Result.success(num);
 
+    }
+
+    /**
+     * DELETE /aihome/device/{deviceId}?familyId=
+     * 删除指定设备（须属于该家庭）。
+     */
+    @DeleteMapping("/{deviceId}")
+    public Result deleteDevice(@PathVariable Integer deviceId, @RequestParam Integer familyId) {
+        if (deviceId == null || familyId == null) {
+            return Result.fail("请提供设备ID与家庭ID");
+        }
+        String err = deviceService.deleteDevice(familyId, deviceId);
+        if (err != null) {
+            return Result.fail(err);
+        }
+        sensorTriggerStateService.clearTrigger(deviceId);
+        irBeamTopicRegistry.refresh();
+        presenceSensorTopicRegistry.refresh();
+        climateSensorTopicRegistry.refresh();
+        return Result.success("设备已删除");
     }
 }

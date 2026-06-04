@@ -5,7 +5,6 @@ import com.cms.smart_home_agent.mapper.HabitDataLogMapper;
 import com.cms.smart_home_agent.request.AiConditioningRequest;
 import com.cms.smart_home_agent.request.WeatherRequest;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -27,7 +26,14 @@ public class AirConditioningService implements Function<AiConditioningRequest, S
     @Autowired
     private WeatherService weatherService;
 
-    // 删除了刚才那行多余的 @Autowired private
+    @Autowired
+    private DeviceService deviceService;
+
+    @Autowired
+    private MqttService mqttService;
+
+    @Autowired
+    private IndoorClimateService indoorClimateService;
 
     @Override
     public String apply(AiConditioningRequest request) {
@@ -45,25 +51,18 @@ public class AirConditioningService implements Function<AiConditioningRequest, S
         String modeMessage = "";
         Double targetTemp = (request.getTemperature() == null) ? null : request.getTemperature().doubleValue();
 
-        // --- 第一步：获取实时天气 ---
-        // 无论是否预测，我们都需要天气数据来作为“特征”存入数据库
         WeatherRequest weatherRequest = new WeatherRequest();
         weatherRequest.setCity(city);
         String weatherJson = weatherService.apply(weatherRequest);
         double currentOutTemp = parseTempFromJson(weatherJson);
-        double currentInTemp = 0.0;
+        double currentInTemp = indoorClimateService.getIndoorTemperatureCelsius();
+        log.info("环境特征 室外(天气): {} ℃, 室内(传感器): {} ℃", currentOutTemp, currentInTemp);
+
         if (targetTemp == null) {
-
-            // 2. 解析温度
-            currentOutTemp = parseTempFromJson(weatherJson);
-             currentInTemp = 27.0; // 模拟室内温度
-
-            // 3. 预测逻辑
             targetTemp = habitLearningService.getPersonalizedTemp(userId, familyId, currentOutTemp, currentInTemp);
             modeMessage = "（已通过预测模型为您设定习惯温度）";
             isAiPredicted = true;
-        }
-        else {
+        } else {
             modeMessage = "（已按您的要求设定）";
             isAiPredicted = false;
         }
@@ -87,6 +86,34 @@ public class AirConditioningService implements Function<AiConditioningRequest, S
             }
         } else {
             log.info(">>>>>> [仅执行] 本次为 AI 预测，不计入训练集以防数据污染 <<<<<<");
+        }
+        String deviceName = request.getDeviceName();
+        String deviceType = request.getDeviceType();
+        String topic = deviceService.findTopic(familyId, deviceType, deviceName);
+
+        // --- 新增：安全拦截与兜底机制 ---
+        if (topic == null || topic.trim().isEmpty()) {
+            log.error(">>>>>> 获取 Topic 失败！AI传入参数 -> familyId: {}, deviceType: {}, deviceName: {} <<<<<<",
+                    familyId, deviceType, deviceName);
+            // 方案 A: 严格模式，直接返回报错，让 AI 知道它找错设备了
+            return String.format("控制失败：未在家庭(ID:%d)中找到名称为'%s'的空调设备，请检查设备名称。", familyId, deviceName);
+
+            // 方案 B (如果你想强行测试通过，可以解开下面这行的注释，写死兜底的 topic)
+            // topic = "airconditioner-sub";
+            // log.warn("使用兜底 topic: {}", topic);
+        }
+
+        String action = String.format("{\"temp\":%.1f}", targetTemp);
+        log.info("准备发送控制指令 -> deviceName: {}, deviceType: {}, topic: {}, action: {}", deviceName, deviceType, topic, action);
+
+        try {
+            mqttService.publishToDevice(topic, deviceName, action);
+        } catch (JsonProcessingException e) {
+            log.error("MQTT JSON 转换失败", e);
+            return "控制失败：内部系统数据格式错误。";
+        } catch (Exception e) {
+            log.error("MQTT 发布失败", e);
+            return "控制失败：MQTT 消息发送异常。";
         }
 
         return String.format("成功！%s 的空调已经调整为 %.1f 度, %s",

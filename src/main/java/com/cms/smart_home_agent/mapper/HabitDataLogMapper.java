@@ -36,4 +36,10 @@ public interface HabitDataLogMapper extends BaseMapper<HabitDataLog> {
         @Insert("INSERT INTO habit_data_log(family_id, user_id, outdoor_temp, indoor_temp, target_temp, create_time) " +
                 "VALUES(#{familyId}, #{userId}, #{outdoorTemp}, #{indoorTemp}, #{targetTemp}, NOW())")
         int insertHabitLog(HabitDataLog log);
+
+    @Select("SELECT * FROM (SELECT * FROM habit_data_log " +
+            "WHERE family_id = #{familyId} " +
+            "ORDER BY create_time DESC LIMIT 24) AS temp " +
+            "ORDER BY create_time ASC") // 先取最近24条，再按时间正序排，方便前端绘图
+    List<HabitDataLog> findChartLogs( @Param("familyId") Integer familyId);
 }

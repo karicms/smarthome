@@ -19,4 +19,8 @@ public class AiConditioningRequest {
 
     @JsonPropertyDescription("该家庭所在的城市名称，例如：北京。请从家庭信息中提取。")
     private String familycity;
+    @JsonPropertyDescription("设备的名称，用于区分不同设备的请求。设备名称可能跟设备的位置有关，比如客厅灯、卧室灯等，请根据用户的指令准确填写，不要随意猜测")
+    private String deviceName;
+    @JsonPropertyDescription("设备的类型，用于区分不同设备的请求。设备类型可能跟设备的功能有关，比如灯、空调等，请根据用户的指令准确填写，不要随意猜测")
+    private String deviceType;
 }
