@@ -1,6 +1,6 @@
 # AI 智能家居管理系统项目说明及安装说明
 
-本文档可作为 GitHub `README.md` 使用，也可作为毕业设计提交材料中的“项目说明、安装配置说明、使用说明”。按照本文档完成环境准备、配置文件、数据库初始化和启动步骤后，可以运行前端、后端和硬件端，完成智能家居系统的演示。
+本文档可作为 项目说明、安装配置说明、使用说明”。按照本文档完成环境准备、配置文件、数据库初始化和启动步骤后，可以运行前端、后端和硬件端。
 
 ## 1. 项目简介
 
@@ -10,9 +10,9 @@ AI 智能家居管理系统是一个前端、后端、硬件联动的智能家�
 
 | 模块 | 路径 | 说明 |
 |---|---|---|
-| 后端服务 | `/Users/cms/Documents/code/javaproject/smart-home-agent` | Spring Boot 后端，提供 REST API、AI 助手、MQTT 通信、MySQL/Redis 数据管理 |
-| 前端网页 | `/Users/cms/Documents/code/javaproject/aihome-web` | Vue 3 + Vite 前端，提供登录、首页控制台、AI 助手、图表、个人中心 |
-| 硬件固件 | `/Users/cms/Documents/code/javaproject/AI-HOME/aihome_hardware` | PlatformIO + Arduino ESP32 固件，包含执行节点和人体感知节点 |
+| 后端服务 | `/smart-home-agent` | Spring Boot 后端，提供 REST API、AI 助手、MQTT 通信、MySQL/Redis 数据管理 |
+| 前端网页 | `/aihome-web` | Vue 3 + Vite 前端，提供登录、首页控制台、AI 助手、图表、个人中心 |
+| 硬件固件 | `/AI-HOME/aihome_hardware` | PlatformIO + Arduino ESP32 固件，包含执行节点和人体感知节点 |
 
 ## 2. 系统功能
 
@@ -97,37 +97,15 @@ AI 智能家居管理系统是一个前端、后端、硬件联动的智能家�
 | MQTT 工具 | MQTTX 可选 | 没有硬件时可模拟 MQTT 消息 |
 | API Key | 高德、和风天气、OpenAI 兼容模型 | AI 和外部 API 功能需要 |
 
-## 5. 安装配置说明
+## 5. 后端安装使用说明
 
-### 5.1 克隆或准备代码
-
-如果是在本机已有代码，目录如下：
+### 5.1 进入后端目录
 
 ```bash
-/Users/cms/Documents/code/javaproject/
-├── smart-home-agent              # 后端
-├── aihome-web                    # 前端
-└── AI-HOME/aihome_hardware       # 硬件
+cd /smart-home-agent
 ```
 
-如果上传到 GitHub，建议仓库结构保持一致：
-
-```bash
-AI-HOME/
-├── backend/smart-home-agent
-├── frontend/aihome-web
-└── hardware/aihome_hardware
-```
-
-## 6. 后端安装使用说明
-
-### 6.1 进入后端目录
-
-```bash
-cd /Users/cms/Documents/code/javaproject/smart-home-agent
-```
-
-### 6.2 准备 MySQL 数据库
+### 5.2 准备 MySQL 数据库
 
 创建数据库：
 
@@ -373,21 +351,21 @@ curl -X POST http://127.0.0.1:8080/aihome/user/login \
 }
 ```
 
-## 7. 前端安装使用说明
+## 6. 前端安装使用说明
 
-### 7.1 进入前端目录
+### 6.1 进入前端目录
 
 ```bash
-cd /Users/cms/Documents/code/javaproject/aihome-web
+cd /aihome-web
 ```
 
-### 7.2 安装依赖
+### 6.2 安装依赖
 
 ```bash
 npm install
 ```
 
-### 7.3 启动前端
+### 6.3 启动前端
 
 ```bash
 npm run dev
@@ -401,7 +379,7 @@ http://127.0.0.1:5173
 
 如果端口被占用，Vite 会自动切换到 5174、5175 等端口。
 
-### 7.4 前端连接后端说明
+### 6.4 前端连接后端说明
 
 开发环境下，前端 `src/api/request.js` 的 `baseURL` 为空，请求会走 Vite 代理。
 
@@ -431,15 +409,15 @@ VITE_PROXY_TARGET=http://后端IP:8080 npm run dev
 npm run build
 ```
 
-## 8. 硬件安装使用说明
+## 7. 硬件安装使用说明
 
 硬件目录：
 
 ```bash
-cd /Users/cms/Documents/code/javaproject/AI-HOME/aihome_hardware
+cd AI-HOME/aihome_hardware
 ```
 
-### 8.1 硬件分工
+### 7.1 硬件分工
 
 | 工程 | 说明 |
 |---|---|
@@ -496,7 +474,7 @@ static const uint16_t MQTT_PORT = 1883;
 ### 8.5 烧录板 A
 
 ```bash
-cd /Users/cms/Documents/code/javaproject/AI-HOME/aihome_hardware/board_a_actuator
+cd /AI-HOME/aihome_hardware/board_a_actuator
 pio run -t upload
 pio device monitor -b 115200
 ```
@@ -504,7 +482,7 @@ pio device monitor -b 115200
 ### 8.6 烧录板 B
 
 ```bash
-cd /Users/cms/Documents/code/javaproject/AI-HOME/aihome_hardware/board_b_presence
+cd /AI-HOME/aihome_hardware/board_b_presence
 pio run -t upload
 pio device monitor -b 115200
 ```
@@ -556,7 +534,7 @@ Payload:
 再发布 Topic: cms-ir-out Payload: {"triggered":true}
 ```
 
-## 9. 系统启动顺序
+## 8. 系统启动顺序
 
 建议按以下顺序启动：
 
@@ -566,14 +544,14 @@ Payload:
 4. 启动后端：
 
 ```bash
-cd /Users/cms/Documents/code/javaproject/smart-home-agent
+cd /mart-home-agent
 ./mvnw spring-boot:run
 ```
 
 5. 启动前端：
 
 ```bash
-cd /Users/cms/Documents/code/javaproject/aihome-web
+cd /aihome-web
 npm run dev
 ```
 
